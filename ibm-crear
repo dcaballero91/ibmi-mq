@@ -1,0 +1,75 @@
+---
+- name: Configuración avanzada de MQ en IBM i AS/400
+  hosts: ibmi
+  gather_facts: no
+  tasks:
+
+    - name: Crear gestor de colas
+      shell: |
+        CRTMQM QMGR(MYQMGR)
+      register: create_qmgr
+      ignore_errors: yes
+
+    - name: Verificar creación del gestor de colas
+      debug:
+        msg: "Gestor de colas creado: {{ create_qmgr.stdout }}"
+
+    - name: Crear canal
+      shell: |
+        CRTMQMCHL CHLNAME(MY.CHANNEL) CHLTYPE(SVRCONN) QMNAME(MYQMGR)
+      register: create_channel
+      ignore_errors: yes
+
+    - name: Verificar creación del canal
+      debug:
+        msg: "Canal creado: {{ create_channel.stdout }}"
+
+    - name: Crear cola
+      shell: |
+        CRTMQMQ QNAME(MY.QUEUE) QMGR(MYQMGR)
+      register: create_queue
+      ignore_errors: yes
+
+    - name: Verificar creación de la cola
+      debug:
+        msg: "Cola creada: {{ create_queue.stdout }}"
+
+    - name: Configurar listener en el puerto especificado
+      shell: |
+        STRMQMLSR MQMNAME(MYQMGR) PORT(1414) TRPTYPE(TCP)
+      register: listener_setup
+      ignore_errors: yes
+
+    - name: Verificar configuración del listener
+      debug:
+        msg: "Listener configurado en puerto 1414: {{ listener_setup.stdout }}"
+
+    - name: Otorgar permisos al usuario en SYSTEM.ADMIN.COMMAND.QUEUE
+      shell: |
+        SETMQAUT -m MYQMGR -t q -n SYSTEM.ADMIN.COMMAND.QUEUE -p ibmconnect +all
+      register: admin_queue_perms
+      ignore_errors: yes
+
+    - name: Otorgar permisos al usuario en SYSTEM.MQEXPLORER.REPLY.MODEL
+      shell: |
+        SETMQAUT -m MYQMGR -t q -n SYSTEM.MQEXPLORER.REPLY.MODEL -p ibmconnect +all
+      register: explorer_reply_perms
+      ignore_errors: yes
+
+    - name: Otorgar permisos al usuario en SYSTEM.AUTO.SVRCONN
+      shell: |
+        SETMQAUT -m MYQMGR -t chl -n SYSTEM.AUTO.SVRCONN -p ibmconnect +all
+      register: auto_svrconn_perms
+      ignore_errors: yes
+
+    - name: Verificar permisos en SYSTEM.ADMIN.COMMAND.QUEUE
+      debug:
+        msg: "Permisos en SYSTEM.ADMIN.COMMAND.QUEUE: {{ admin_queue_perms.stdout }}"
+
+    - name: Verificar permisos en SYSTEM.MQEXPLORER.REPLY.MODEL
+      debug:
+        msg: "Permisos en SYSTEM.MQEXPLORER.REPLY.MODEL: {{ explorer_reply_perms.stdout }}"
+
+    - name: Verificar permisos en SYSTEM.AUTO.SVRCONN
+      debug:
+        msg: "Permisos en SYSTEM.AUTO.SVRCONN: {{ auto_svrconn_perms.stdout }}"
